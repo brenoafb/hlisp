@@ -29,7 +29,8 @@ type Env = [FrameEnv]
 
 eval :: Env -> Exp -> Exp
 eval env exp = case exp of
-                 EList (ELambda params body:_) -> undefined
+                 EList (ELambda params body:exps) -> let bindings = zip params (map (eval env) exps)
+                                                      in eval (bindings:env) body
                  EList (EOp op:_) -> evalPrimitive env exp
                  EVar s -> unsafeLookup' env s
                  _ -> exp
