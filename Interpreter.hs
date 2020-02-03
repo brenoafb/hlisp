@@ -1,5 +1,7 @@
 module Interpreter where
 
+import Control.Applicative
+
 data Exp = EInt Int
          | EStr String
          | EList [Exp]
@@ -29,8 +31,8 @@ eval :: Env -> Exp -> Exp
 eval env exp = case exp of
                  EList (ELambda params body:_) -> undefined
                  EList (EOp op:_) -> evalPrimitive env exp
+                 EVar s -> unsafeLookup' env s
                  _ -> exp
-
 
 evalPrimitive :: Env -> Exp -> Exp
 evalPrimitive env exp = case exp of
@@ -83,6 +85,17 @@ evalCond env (EList [p,e]:es) =
     ETrue -> eval env e
     EList [] -> evalCond env es
 
+
+unsafeLookup' :: Env -> String -> Exp
+unsafeLookup' env s = case lookup' env s of
+                        Just x -> x
+
+lookup' :: Env -> String -> Maybe Exp
+lookup' [] _ = Nothing
+lookup' (env:envs) s = frameLookup env s <|> lookup' envs s
+
+frameLookup :: FrameEnv -> String -> Maybe Exp
+frameLookup fenv s = lookup s fenv
 
 
 
