@@ -70,7 +70,8 @@ identP :: String -> Parser String
 identP = traverse charP
 
 stringP :: Parser String
-stringP = spanP' $ \c -> not (isDigit c) && (isSymbol c || isAlphaNum c)
+stringP = charP '\"' *> content <* charP '\"'
+  where content = spanP' $ \c -> not (isDigit c) && (isSymbol c || isAlphaNum c)
 
 spanP :: (Char -> Bool) -> Parser String
 spanP pred = Parser $ \s -> pure $ span pred s
