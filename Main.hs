@@ -11,7 +11,7 @@ main = do
     Nothing -> putStrLn "error"
     Just v -> print v
 
-parseAndEval :: String -> Maybe Int
+parseAndEval :: String -> Maybe Exp
 parseAndEval s = do
   pair <- runP expP s
   let e = fst pair
