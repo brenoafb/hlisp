@@ -46,9 +46,14 @@ fromString "*" = OpMult
 fromString "/" = OpDiv
 fromString "quote" = OpQuote
 fromString "atom" = OpAtom
+fromString "eq" = OpEq
+fromString "car" = OpCar
+fromString "cdr" = OpCdr
+fromString "cons" = OpCons
+fromString "cond" = OpCond
 
 opP :: Parser String
-opP = foldr1 (<|>) . map identP $ ["+", "-", "*", "/", "quote", "atom"]
+opP = foldr1 (<|>) . map identP $ ["+", "-", "*", "/", "quote", "atom", "eq", "car", "cdr", "cons", "cond"]
 
 listP :: Parser [Exp]
 listP = charP '(' *> expP `sepBy` wP <* charP ')'
