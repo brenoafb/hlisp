@@ -3,19 +3,7 @@ module Parser where
 import Control.Applicative
 import Control.Monad
 import Data.Char
-import Text.Read (readMaybe)
-
-data Value = VInt Int
-           | VStr String
-           | VList [Value]
-           | VOp Op
-           deriving (Eq, Show)
-
-data Op = OpPlus
-        | OpMinus
-        | OpMult
-        | OpDiv
-        deriving (Eq, Show)
+import Interpreter
 
 newtype Parser a = Parser { runP :: String -> Maybe (a, String) }
 
@@ -43,13 +31,13 @@ instance Monad Parser where
     let p' = f x
     runP p' s'  -- feels wrong
 
-valueP :: Parser Value
-valueP = foldr1 (<|>)
-       [ VInt <$> intP
-       , VOp . fromString <$> opP
-       , VStr <$> stringP
-       , VList <$> listP
-       ]
+expP :: Parser Exp
+expP = foldr1 (<|>)
+     [ EInt <$> intP
+     , EOp . fromString <$> opP
+     , EStr <$> stringP
+     , EList <$> listP
+     ]
 
 fromString :: String -> Op
 fromString "+" = OpPlus
@@ -60,17 +48,12 @@ fromString "/" = OpDiv
 opP :: Parser String
 opP = foldr1 (<|>) . map identP $ ["+", "-", "*", "/"]
 
-listP :: Parser [Value]
-listP = charP '(' *> valueP `sepBy` wP <* charP ')'
-
--- listP :: Parser [String]
--- listP = charP '(' *> stringP `sepBy` wP <* charP ')'
-
+listP :: Parser [Exp]
+listP = charP '(' *> expP `sepBy` wP <* charP ')'
 
 sepBy :: Parser a -> Parser b -> Parser [a]
 p `sepBy` sep = ((:) <$> p <*> many (sep *> p))
               <|> pure []
-
 
 intP :: Parser Int
 intP = read <$> spanP' isDigit
