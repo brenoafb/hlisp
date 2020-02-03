@@ -39,13 +39,7 @@ evalPrimitive exp = case exp of
                              OpMult -> EInt $ v1 * v2
                              OpDiv -> EInt $ v1 `div` v2
                     EList [EOp OpQuote, x] -> x
-                    EList [EOp OpAtom, x] -> case eval x of
-                      EInt _ -> ETrue
-                      EStr _ -> ETrue
-                      EList [] -> ETrue
-                      EList _ -> EList []
-                      EOp _ -> ETrue
-                      ETrue -> ETrue
+                    EList [EOp OpAtom, x] -> evalAtom $ eval x
                     EList [EOp OpEq, x, y] -> evalEq (eval x) (eval y)
                     EList [EOp OpCar, x] -> evalCar (eval x)
                     EList [EOp OpCdr, x] -> evalCdr (eval x)
@@ -53,7 +47,14 @@ evalPrimitive exp = case exp of
                     EList (EOp OpCond:xs) -> evalCond xs
 
 
-
+evalAtom :: Exp -> Exp
+evalAtom x = case x of
+  EInt _ -> ETrue
+  EStr _ -> ETrue
+  EList [] -> ETrue
+  EList _ -> EList []
+  EOp _ -> ETrue
+  ETrue -> ETrue
 
 evalEq :: Exp -> Exp -> Exp
 evalEq (EInt x) (EInt y) | x == y = ETrue
@@ -72,7 +73,10 @@ evalCons :: Exp -> Exp -> Exp
 evalCons e (EList es) = EList $ e:es
 
 evalCond :: [Exp] -> Exp
-evalCond = undefined
+evalCond (EList [p,e]:es) = case eval p of
+                        ETrue -> eval e
+                        EList [] -> evalCond es
+
 
 
 

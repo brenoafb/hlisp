@@ -34,23 +34,24 @@ instance Monad Parser where
 expP :: Parser Exp
 expP = foldr1 (<|>)
      [ EInt <$> intP
-     , EOp . fromString <$> opP
+     , EOp . str2op <$> opP
      , EStr <$> stringP
+     , ETrue <$ identP "#t"
      , EList <$> listP
      ]
 
-fromString :: String -> Op
-fromString "+" = OpPlus
-fromString "-" = OpMinus
-fromString "*" = OpMult
-fromString "/" = OpDiv
-fromString "quote" = OpQuote
-fromString "atom" = OpAtom
-fromString "eq" = OpEq
-fromString "car" = OpCar
-fromString "cdr" = OpCdr
-fromString "cons" = OpCons
-fromString "cond" = OpCond
+str2op :: String -> Op
+str2op "+" = OpPlus
+str2op "-" = OpMinus
+str2op "*" = OpMult
+str2op "/" = OpDiv
+str2op "quote" = OpQuote
+str2op "atom" = OpAtom
+str2op "eq" = OpEq
+str2op "car" = OpCar
+str2op "cdr" = OpCdr
+str2op "cons" = OpCons
+str2op "cond" = OpCond
 
 opP :: Parser String
 opP = foldr1 (<|>) . map identP $ ["+", "-", "*", "/", "quote", "atom", "eq", "car", "cdr", "cons", "cond"]
