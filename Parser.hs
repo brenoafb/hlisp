@@ -8,7 +8,14 @@ import Text.Read (readMaybe)
 data Value = VInt Int
            | VStr String
            | VList [Value]
+           | VOp Op
            deriving (Eq, Show)
+
+data Op = OpPlus
+        | OpMinus
+        | OpMult
+        | OpDiv
+        deriving (Eq, Show)
 
 newtype Parser a = Parser { runP :: String -> Maybe (a, String) }
 
@@ -36,18 +43,28 @@ instance Monad Parser where
     let p' = f x
     runP p' s'  -- feels wrong
 
-vListP :: Parser Value
-vListP = VList <$> (charP '(' *> (vListP <|> valueP) `sepBy` wP <* charP ')')
-
--- note: if we try to read a VInt before a VStr,
--- we may get a 'Prelude.readY no parse' error.
--- I don't really know why this happens, but I think
--- it has to do with lazy evaluation and the fmap in intP
 valueP :: Parser Value
-valueP = (VStr <$> stringP) <|> (VInt <$> intP)
+valueP = foldr1 (<|>)
+       [ VInt <$> intP
+       , VOp . fromString <$> opP
+       , VStr <$> stringP
+       , VList <$> listP
+       ]
 
-listP :: Parser [String]
-listP = charP '(' *> stringP `sepBy` wP <* charP ')'
+fromString :: String -> Op
+fromString "+" = OpPlus
+fromString "-" = OpMinus
+fromString "*" = OpMult
+fromString "/" = OpDiv
+
+opP :: Parser String
+opP = foldr1 (<|>) . map identP $ ["+", "-", "*", "/"]
+
+listP :: Parser [Value]
+listP = charP '(' *> valueP `sepBy` wP <* charP ')'
+
+-- listP :: Parser [String]
+-- listP = charP '(' *> stringP `sepBy` wP <* charP ')'
 
 
 sepBy :: Parser a -> Parser b -> Parser [a]
