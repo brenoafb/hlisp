@@ -34,11 +34,19 @@ instance Monad Parser where
 expP :: Parser Exp
 expP = foldr1 (<|>)
      [ EInt <$> intP
+     , lambdaP
      , EOp . str2op <$> opP
      , EStr <$> stringP
+     , EVar <$> stringP'
      , ETrue <$ identP "#t"
      , EList <$> listP
      ]
+
+lambdaP :: Parser Exp
+lambdaP = ELambda  <$>
+  (op *> identP "lambda" *> wP *> op *> stringP' `sepBy` wP <* cp) <*> (wP *> expP <* cp)
+  where op = charP '('
+        cp = charP ')'
 
 str2op :: String -> Op
 str2op "+" = OpPlus
@@ -70,8 +78,10 @@ identP :: String -> Parser String
 identP = traverse charP
 
 stringP :: Parser String
-stringP = charP '\"' *> content <* charP '\"'
-  where content = spanP' $ \c -> not (isDigit c) && (isSymbol c || isAlphaNum c)
+stringP = charP '\"' *> stringP' <* charP '\"'
+
+stringP' :: Parser String
+stringP' = spanP' $ \c -> not (isDigit c) && (isSymbol c || isAlphaNum c)
 
 spanP :: (Char -> Bool) -> Parser String
 spanP pred = Parser $ \s -> pure $ span pred s

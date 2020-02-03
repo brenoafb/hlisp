@@ -15,5 +15,5 @@ parseAndEval :: String -> Maybe Exp
 parseAndEval s = do
   pair <- runP expP s
   let e = fst pair
-  return $ eval e
+  return $ eval [[]] e
 
