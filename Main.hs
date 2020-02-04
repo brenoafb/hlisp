@@ -30,6 +30,20 @@ parseAndEval' s =
       print e
       return . Just . fst $ eval defaultEnv e
 
+repl :: Env -> IO ()
+repl env = do
+  putStr "> "
+  line <- getLine
+  let p = runP expP line
+  case p of
+    Nothing -> do
+      putStrLn "Error parsing line"
+      repl env
+    Just (exp,_) -> do
+      let (result, env') = eval env exp
+      putStrLn $ show' result
+      repl env'
+
 defaultEnv :: Env
 defaultEnv = [
   map (\(x,y) -> (x, fst . fromJust $ runP expP y))
