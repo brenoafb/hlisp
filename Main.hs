@@ -6,9 +6,9 @@ import Interpreter
 main :: IO ()
 main = do
   s <- getContents
-  let mi = parseAndEval s
+  mi <- parseAndEval' s
   case mi of
-    Nothing -> putStrLn "error"
+    Nothing -> putStrLn "Error interpreting expression"
     Just v -> print v
 
 parseAndEval :: String -> Maybe Exp
@@ -17,3 +17,13 @@ parseAndEval s = do
   let e = fst pair
   return $ eval [[]] e
 
+parseAndEval' :: String -> IO (Maybe Exp)
+parseAndEval' s =
+  let pairMaybe = runP expP s
+   in case pairMaybe of
+    Nothing -> do
+      putStrLn "Error parsing expression"
+      return Nothing
+    Just (e,_) -> do
+      print e
+      return . Just $ eval [[]] e

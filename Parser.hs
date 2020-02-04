@@ -35,6 +35,7 @@ expP :: Parser Exp
 expP = foldr1 (<|>)
      [ EInt <$> intP
      , lambdaP
+--     , labelP
      , EOp . str2op <$> opP
      , EStr <$> stringP
      , EVar <$> stringP'
@@ -42,11 +43,17 @@ expP = foldr1 (<|>)
      , EList <$> listP
      ]
 
+-- labelP :: Parser Exp
+-- labelP = ELabel <$>
+--   (op *> identP "label" *> wP' *> stringP' <* wP') <*> (lambdaP <* cp)
+--   where op = charP '(' <* wP''
+--         cp = wP'' *> charP ')'
+
 lambdaP :: Parser Exp
 lambdaP = ELambda  <$>
-  (op *> identP "lambda" *> wP *> op *> stringP' `sepBy` wP <* cp) <*> (wP *> expP <* cp)
-  where op = charP '('
-        cp = charP ')'
+  (op *> identP "lambda" *> wP' *> op *> stringP' `sepBy` wP' <* cp) <*> (wP' *> expP <* cp)
+  where op = charP '(' <* wP''
+        cp = wP'' *> charP ')'
 
 str2op :: String -> Op
 str2op "+" = OpPlus
@@ -65,7 +72,9 @@ opP :: Parser String
 opP = foldr1 (<|>) . map identP $ ["+", "-", "*", "/", "quote", "atom", "eq", "car", "cdr", "cons", "cond"]
 
 listP :: Parser [Exp]
-listP = charP '(' *> expP `sepBy` wP <* charP ')'
+listP = op *> expP `sepBy` wP' <* cp
+  where op = charP '(' <* wP''
+        cp = wP'' *> charP ')'
 
 sepBy :: Parser a -> Parser b -> Parser [a]
 p `sepBy` sep = ((:) <$> p <*> many (sep *> p))
@@ -92,8 +101,11 @@ spanP' pred = Parser $ \s -> let p@(x,xs) = span pred s
                                    [] -> Nothing
                                    _ -> Just p
 
-wP :: Parser Char
-wP = charP ' '
+wP' :: Parser String
+wP' = some (charP ' ' <|> charP '\n' <|> charP '\t')
+
+wP'' :: Parser String
+wP'' = many (charP ' ' <|> charP '\n' <|> charP '\t')
 
 charP :: Char -> Parser Char
 charP c = Parser $ \s ->
