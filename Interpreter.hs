@@ -32,6 +32,10 @@ eval :: Env -> Exp -> (Exp, Env)
 eval env exp = case exp of
                  EList (EOp _:_) -> (evalPrimitive env exp, env)
                  EVar s -> (unsafeLookup' env s, env)
+                 EList [EVar "define", EVar s, exp] ->
+                   let v = fst $ eval env exp
+                       env' = addToAL env s v
+                       in (v, env')
                  EList (EList [EVar "label", EVar s, lmbd]:exps) ->
                    let env' = addToAL env s lmbd
                     in eval env' $ EList (lmbd:exps)
