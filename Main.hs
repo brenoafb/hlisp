@@ -17,8 +17,7 @@ main = do
 parseAndEval :: String -> Maybe Exp
 parseAndEval s = do
   pair <- runP expP s
-  let e = fst pair
-  return $ eval defaultEnv e
+  return . fst . eval defaultEnv $ fst pair
 
 parseAndEval' :: String -> IO (Maybe Exp)
 parseAndEval' s =
@@ -29,7 +28,7 @@ parseAndEval' s =
       return Nothing
     Just (e,_) -> do
       print e
-      return . Just $ eval defaultEnv e
+      return . Just . fst $ eval defaultEnv e
 
 defaultEnv :: Env
 defaultEnv = [

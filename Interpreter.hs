@@ -28,40 +28,39 @@ data Op = OpPlus
 type FrameEnv = [(String, Exp)]
 type Env = [FrameEnv]
 
-eval :: Env -> Exp -> Exp
+eval :: Env -> Exp -> (Exp, Env)
 eval env exp = case exp of
-                 EList (EOp op:_) -> evalPrimitive env exp
-                 EVar s -> unsafeLookup' env s
+                 EList (EOp _:_) -> (evalPrimitive env exp, env)
+                 EVar s -> (unsafeLookup' env s, env)
                  EList (EList [EVar "label", EVar s, lmbd]:exps) ->
                    let env' = addToAL env s lmbd
                     in eval env' $ EList (lmbd:exps)
-                 EList (EVar f : exps) -> eval env $ EList (f':exps') -- only monic
-                   where f' = eval env $ EVar f
-                         exps' = map (eval env) exps
+                 EList (EVar f : exps) -> eval env $ EList (f':exps')
+                   where (f', _) = eval env $ EVar f
+                         exps' = map (fst . eval env) exps
                  EList (ELambda params body:exps) ->
-                   let bindings = zip params (map (eval env) exps)
+                   let bindings = zip params (map (fst . eval env) exps)
                    in eval (bindings:env) body
-                 _ -> exp
+                 _ -> (exp, env)
 
 evalPrimitive :: Env -> Exp -> Exp
 evalPrimitive env exp = case exp of
                     EList [EOp op, e1, e2]
                       | op `elem` [OpPlus, OpMinus, OpMult, OpDiv] -> -- arithmetic operation
-                          let EInt v1 = eval env e1
-                              EInt v2 = eval env e2
+                          let EInt v1 = fst $ eval env e1
+                              EInt v2 = fst $ eval env e2
                           in case op of
                              OpPlus -> EInt $ v1 + v2
                              OpMinus -> EInt $ v1 - v2
                              OpMult -> EInt $ v1 * v2
                              OpDiv -> EInt $ v1 `div` v2
                     EList [EOp OpQuote, x] -> x
-                    EList [EOp OpAtom, x] -> evalAtom env $ eval env x
-                    EList [EOp OpEq, x, y] -> evalEq env (eval env x) (eval env y)
-                    EList [EOp OpCar, x] -> evalCar env (eval env x)
-                    EList [EOp OpCdr, x] -> evalCdr env (eval env x)
-                    EList [EOp OpCons, x, y] -> evalCons env (eval env x) (eval env y)
+                    EList [EOp OpAtom, x] -> evalAtom env . fst $ eval env x
+                    EList [EOp OpEq, x, y] -> evalEq env (fst $ eval env x) (fst $ eval env y)
+                    EList [EOp OpCar, x] -> evalCar env (fst $ eval env x)
+                    EList [EOp OpCdr, x] -> evalCdr env (fst $ eval env x)
+                    EList [EOp OpCons, x, y] -> evalCons env (fst $ eval env x) (fst $ eval env y)
                     EList (EOp OpCond:xs) -> evalCond env xs
-
 
 evalAtom :: Env -> Exp -> Exp
 evalAtom _ x = case x of
@@ -90,8 +89,8 @@ evalCons _ e (EList es) = EList $ e:es
 
 evalCond :: Env -> [Exp] -> Exp
 evalCond env (EList [p,e]:es) =
-  case eval env p of
-    ETrue -> eval env e
+  case fst $ eval env p of
+    ETrue -> fst $ eval env e
     EList [] -> evalCond env es
 
 
@@ -110,4 +109,4 @@ addToAL :: Env -> String -> Exp -> Env
 addToAL [] s e = [[(s,e)]]
 addToAL [[]] s e = [[(s,e)]]
 addToAL (env:envs) s e = env':envs
-  where env' = (s,e) : env'
+  where env' = (s,e) : env
