@@ -41,6 +41,7 @@ expP = foldr1 (<|>)
      , EVar <$> stringP'
      , ETrue <$ identP "#t"
      , EList <$> listP
+     , quoteP
      ]
 
 -- labelP :: Parser Exp
@@ -79,6 +80,9 @@ listP = op *> expP `sepBy` wP' <* cp
 sepBy :: Parser a -> Parser b -> Parser [a]
 p `sepBy` sep = ((:) <$> p <*> many (sep *> p))
               <|> pure []
+
+quoteP :: Parser Exp
+quoteP = (\e -> EList (EOp OpQuote : [e])) <$> (charP '\'' *> expP)
 
 intP :: Parser Int
 intP = read <$> spanP' isDigit

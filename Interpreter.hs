@@ -28,7 +28,6 @@ data Op = OpPlus
 type FrameEnv = [(String, Exp)]
 type Env = [FrameEnv]
 
-
 eval :: Env -> Exp -> Exp
 eval env exp = case exp of
                  EList (EOp op:_) -> evalPrimitive env exp

@@ -2,6 +2,8 @@ module Main where
 
 import Parser
 import Interpreter
+import Preprocessor
+import Serializer
 import Data.Maybe (fromJust)
 
 main :: IO ()
