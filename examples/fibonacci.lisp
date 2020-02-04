@@ -1,0 +1,5 @@
+((label f (lambda (x)
+            (cond ((eq x 0) 0)
+                  ((eq x 1) 1)
+                  (#t (+ (f (- x 1))
+                         (f (- x 2))))))) 20)
