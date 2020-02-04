@@ -33,9 +33,9 @@ eval :: Env -> Exp -> Exp
 eval env exp = case exp of
                  EList (EOp op:_) -> evalPrimitive env exp
                  EVar s -> unsafeLookup' env s
-                 EList (EList [EVar "label", EVar s, l@(ELambda params body)]:exps) ->
-                   let env' = addToAL env s l
-                    in eval env' $ EList (l:exps)
+                 EList (EList [EVar "label", EVar s, lmbd]:exps) ->
+                   let env' = addToAL env s lmbd
+                    in eval env' $ EList (lmbd:exps)
                  EList (EVar f : exps) -> eval env $ EList (f':exps') -- only monic
                    where f' = eval env $ EVar f
                          exps' = map (eval env) exps
@@ -65,7 +65,7 @@ evalPrimitive env exp = case exp of
 
 
 evalAtom :: Env -> Exp -> Exp
-evalAtom env x = case x of
+evalAtom _ x = case x of
   EInt _ -> ETrue
   EStr _ -> ETrue
   EList [] -> ETrue
