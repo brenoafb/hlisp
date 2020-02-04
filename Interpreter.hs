@@ -28,6 +28,7 @@ data Op = OpPlus
 type FrameEnv = [(String, Exp)]
 type Env = [FrameEnv]
 
+
 eval :: Env -> Exp -> Exp
 eval env exp = case exp of
                  EList (EOp op:_) -> evalPrimitive env exp
@@ -38,9 +39,6 @@ eval env exp = case exp of
                  EList (EVar f : exps) -> eval env $ EList (f':exps') -- only monic
                    where f' = eval env $ EVar f
                          exps' = map (eval env) exps
-                 -- EList [EVar "label", EVar s, EList (l@(ELambda params body):exps)] ->
-                 --   let bindings = zip params (map (eval env) exps)
-                 --   in eval (bindings:addToAL env s l) body
                  EList (ELambda params body:exps) ->
                    let bindings = zip params (map (eval env) exps)
                    in eval (bindings:env) body
@@ -114,6 +112,3 @@ addToAL [] s e = [[(s,e)]]
 addToAL [[]] s e = [[(s,e)]]
 addToAL (env:envs) s e = env':envs
   where env' = (s,e) : env'
-
-
-
