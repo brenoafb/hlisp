@@ -1,9 +1,9 @@
 module Interpreter where
 
 import Control.Applicative
+import Debug.Trace (trace)
 
 data Exp = EInt Int
-         | EStr String
          | EList [Exp]
          | EOp Op
          | ETrue
@@ -26,6 +26,7 @@ data Op = OpPlus
         | OpCdr
         | OpCons
         | OpCond
+        | OpList
         deriving (Eq, Show)
 
 type FrameEnv = [(String, Exp)]
@@ -34,7 +35,7 @@ type Env = [FrameEnv]
 evalExps :: Env -> [Exp] -> (Exp, Env)
 evalExps env [] = (EList [], env)
 evalExps env [exp] = eval env exp
-evalExps env (exp:exps) = let (result,env') = eval env exp
+evalExps env (exp:exps) = let (_,env') = eval env exp
   in evalExps env' exps
 
 eval :: Env -> Exp -> (Exp, Env)
@@ -48,9 +49,8 @@ eval env exp = case exp of
                  EList (EList [EVar "label", EVar s, lmbd]:exps) ->
                    let env' = addToAL env s lmbd
                     in eval env' $ EList (lmbd:exps)
-                 EList (EVar f : exps) -> eval env $ EList (f':exps')
+                 EList (EVar f : exps) -> eval env $ EList (f':exps)
                    where (f', _) = eval env $ EVar f
-                         exps' = map (fst . eval env) exps
                  EList (ELambda params body:exps) ->
                    let bindings = zip params (map (fst . eval env) exps)
                    in eval (bindings:env) body
@@ -73,27 +73,31 @@ evalPrimitive env exp = case exp of
                              OpGeq -> bool2lisp $ v1 >= v2
                     EList [EOp OpQuote, x] -> x
                     EList [EOp OpAtom, x] -> evalAtom env . fst $ eval env x
+                    -- EList [EOp OpEq, EList [EOp OpQuote, EVar x], EList [EOp OpQuote, EVar y]] -> evalEq env (EStr x) (EStr y)
                     EList [EOp OpEq, x, y] -> evalEq env (fst $ eval env x) (fst $ eval env y)
                     EList [EOp OpCar, x] -> evalCar env (fst $ eval env x)
                     EList [EOp OpCdr, x] -> evalCdr env (fst $ eval env x)
                     EList [EOp OpCons, x, y] -> evalCons env (fst $ eval env x) (fst $ eval env y)
                     EList (EOp OpCond:xs) -> evalCond env xs
+                    EList (EOp OpList:xs) -> evalList env xs
 
 evalAtom :: Env -> Exp -> Exp
 evalAtom _ x = case x of
   EInt _ -> ETrue
-  EStr _ -> ETrue
   EList [] -> ETrue
   EList _ -> EList []
   EOp _ -> ETrue
   ETrue -> ETrue
+  EVar _ -> ETrue
+  ELambda _ _ -> EList []
 
 evalEq :: Env -> Exp -> Exp -> Exp
 evalEq _ (EInt x) (EInt y) | x == y = ETrue
-evalEq _ (EStr s1) (EStr s2) | s1 == s2 = ETrue
+evalEq _ (EVar s1) (EVar s2) | s1 == s2 = ETrue
 evalEq _ (EList []) (EList []) = ETrue
 evalEq _ ETrue ETrue = ETrue
-evalEq _ _ _ = EList []
+evalEq _ (EOp op1) (EOp op2) | op1 == op2 = ETrue
+evalEq _ x y = trace (show x ++ " " ++ show y) $ EList []
 
 evalCar :: Env -> Exp -> Exp
 evalCar _ (EList (x:_)) = x
@@ -110,6 +114,8 @@ evalCond env (EList [p,e]:es) =
     ETrue -> fst $ eval env e
     EList [] -> evalCond env es
 
+evalList :: Env -> [Exp] -> Exp
+evalList env exps = EList $ map (fst . eval env) exps
 
 unsafeLookup' :: Env -> String -> Exp
 unsafeLookup' env s = case lookup' env s of
