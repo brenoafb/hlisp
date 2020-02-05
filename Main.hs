@@ -9,26 +9,26 @@ import Data.Maybe (fromJust)
 main :: IO ()
 main = do
   s <- getContents
-  mi <- parseAndEval' s
+  let mi = parseAndEval s
   case mi of
-    Nothing -> putStrLn "Error interpreting expression"
-    Just v -> print v
+    Nothing -> putStrLn "Error"
+    Just v -> putStrLn $ show' v
 
 parseAndEval :: String -> Maybe Exp
 parseAndEval s = do
-  pair <- runP expP s
-  return . fst . eval defaultEnv $ fst pair
+  pair <- runP expsP s
+  return . fst . evalExps defaultEnv $ fst pair
 
 parseAndEval' :: String -> IO (Maybe Exp)
 parseAndEval' s =
-  let pairMaybe = runP expP s
+  let pairMaybe = runP expsP s
    in case pairMaybe of
     Nothing -> do
       putStrLn "Error parsing expression"
       return Nothing
     Just (e,_) -> do
       print e
-      return . Just . fst $ eval defaultEnv e
+      return . Just . fst $ evalExps defaultEnv e
 
 repl :: Env -> IO ()
 repl env = do
