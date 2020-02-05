@@ -14,6 +14,10 @@ main = do
     Nothing -> putStrLn "Error"
     Just v -> putStrLn $ show' v
 
+load :: Env -> String -> Env
+load env s = let Just (exps,_) = runP expsP s
+             in snd $ evalExps env exps
+
 parseAndEval :: String -> Maybe Exp
 parseAndEval s = do
   pair <- runP expsP s
