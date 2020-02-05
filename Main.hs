@@ -9,19 +9,26 @@ import Data.Maybe (fromJust)
 main :: IO ()
 main = do
   s <- getContents
-  let mi = parseAndEval s
+  mi <- parseAndEval s
   case mi of
-    Nothing -> putStrLn "Error"
     Just v -> putStrLn $ show' v
+    Nothing -> putStrLn "Error parsing expressions" >> return ()
 
-load :: Env -> String -> Env
-load env s = let Just (exps,_) = runP expsP s
-             in snd $ evalExps env exps
+loadScript :: Env -> FilePath -> IO Env
+loadScript env p = do
+  s <- readFile p
+  case runP expsP s of
+    Nothing ->
+      putStrLn "error parsing script" >>= (const $ return env)
+    Just (exps,_) -> return . snd $ evalExps env exps
 
-parseAndEval :: String -> Maybe Exp
+parseAndEval :: String -> IO (Maybe Exp)
 parseAndEval s = do
-  pair <- runP expsP s
-  return . fst . evalExps defaultEnv $ fst pair
+  env <- defaultEnv
+  let pairMaybe = runP expsP s
+  case pairMaybe of
+    Just pair -> return . Just . fst . evalExps env $ fst pair
+    Nothing -> return Nothing
 
 parseAndEval' :: String -> IO (Maybe Exp)
 parseAndEval' s =
@@ -32,7 +39,8 @@ parseAndEval' s =
       return Nothing
     Just (e,_) -> do
       print e
-      return . Just . fst $ evalExps defaultEnv e
+      env <- defaultEnv
+      return . Just . fst $ evalExps env e
 
 repl :: Env -> IO ()
 repl env = do
@@ -48,24 +56,5 @@ repl env = do
       putStrLn $ show' result
       repl env'
 
-defaultEnv :: Env
-defaultEnv = [
-  map (\(x,y) -> (x, fst . fromJust $ runP expP y))
-      [ ("null", "(lambda (x) (eq x ()))")
-      , ("and",  "(lambda (x y) (cond (x (cond y #t)) (#t ())))")
-      , ("not",  "(lambda (x) (cond (x ()) (#t #t)))")
-      , ("append", "(lambda (x y) (cond ((null x) y) (#t (cons (car x) (append (cdr x) y)))))")
-      , ("pair", unlines ["(lambda (x y)                                  ",
-                          "   (cond ((and (null x) (null y)) ())          ",
-                          "         ((and (not (atom x)) (not (atom y)))  ",
-                          "          (cons (list (car x) (car y))         ",
-                          "                (pair (cdr x) (cdr y))))))     "])
-      , ("assoc", unlines ["(lambda (x y)                        ",
-                           "  (cond ((eq (caar y) x) (cadar y))  ",
-                           "        (#t (assoc x (cdr y)))))     "])
-      , ("caar", "(lambda (x) (car (car x)))")
-      , ("cadr", "(lambda (x) (car (cdr x)))")
-      , ("cddr", "(lambda (x) (cdr (cdr x)))")
-      , ("cdar", "(lambda (x) (cdr (car x)))")
-      , ("cadar", "(lambda (x) (car (cdr (car x))))")
-      ]]
+defaultEnv :: IO Env
+defaultEnv = loadScript [[]] "base.lisp"
