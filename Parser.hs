@@ -48,12 +48,6 @@ expP = foldr1 (<|>)
      , quoteP
      ]
 
--- labelP :: Parser Exp
--- labelP = ELabel <$>
---   (op *> identP "label" *> wP' *> stringP' <* wP') <*> (lambdaP <* cp)
---   where op = charP '(' <* wP''
---         cp = wP'' *> charP ')'
-
 lambdaP :: Parser Exp
 lambdaP = ELambda  <$>
   (op *> identP "lambda" *> wP' *> op *> stringP' `sepBy` wP' <* cp) <*> (wP' *> expP <* cp)
@@ -65,6 +59,10 @@ str2op "+" = OpPlus
 str2op "-" = OpMinus
 str2op "*" = OpMult
 str2op "/" = OpDiv
+str2op "<" = OpLt
+str2op ">" = OpGt
+str2op "<=" = OpLeq
+str2op ">=" = OpLeq
 str2op "quote" = OpQuote
 str2op "atom" = OpAtom
 str2op "eq" = OpEq
@@ -74,7 +72,7 @@ str2op "cons" = OpCons
 str2op "cond" = OpCond
 
 opP :: Parser String
-opP = foldr1 (<|>) . map identP $ ["+", "-", "*", "/", "quote", "atom", "eq", "car", "cdr", "cons", "cond"]
+opP = foldr1 (<|>) . map identP $ ["+", "-", "*", "/", "<", ">", "<=", ">=", "quote", "atom", "eq", "car", "cdr", "cons", "cond"]
 
 listP :: Parser [Exp]
 listP = op *> expP `sepBy` wP' <* cp

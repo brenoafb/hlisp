@@ -9,13 +9,16 @@ data Exp = EInt Int
          | ETrue
          | EVar String
          | ELambda [String] Exp -- ELambda params body
-         -- | ELabel String Exp -- where Exp is an ELambda
          deriving (Eq, Show)
 
 data Op = OpPlus
         | OpMinus
         | OpMult
         | OpDiv
+        | OpLt
+        | OpGt
+        | OpLeq
+        | OpGeq
         | OpQuote
         | OpAtom
         | OpEq
@@ -56,7 +59,7 @@ eval env exp = case exp of
 evalPrimitive :: Env -> Exp -> Exp
 evalPrimitive env exp = case exp of
                     EList [EOp op, e1, e2]
-                      | op `elem` [OpPlus, OpMinus, OpMult, OpDiv] -> -- arithmetic operation
+                      | op `elem` [OpPlus, OpMinus, OpMult, OpDiv, OpLt, OpGt, OpLeq, OpGeq] -> -- arithmetic operation
                           let EInt v1 = fst $ eval env e1
                               EInt v2 = fst $ eval env e2
                           in case op of
@@ -64,6 +67,10 @@ evalPrimitive env exp = case exp of
                              OpMinus -> EInt $ v1 - v2
                              OpMult -> EInt $ v1 * v2
                              OpDiv -> EInt $ v1 `div` v2
+                             OpLt -> bool2lisp $ v1 < v2
+                             OpGt -> bool2lisp $ v1 > v2
+                             OpLeq -> bool2lisp $ v1 <= v2
+                             OpGeq -> bool2lisp $ v1 >= v2
                     EList [EOp OpQuote, x] -> x
                     EList [EOp OpAtom, x] -> evalAtom env . fst $ eval env x
                     EList [EOp OpEq, x, y] -> evalEq env (fst $ eval env x) (fst $ eval env y)
@@ -106,7 +113,8 @@ evalCond env (EList [p,e]:es) =
 
 unsafeLookup' :: Env -> String -> Exp
 unsafeLookup' env s = case lookup' env s of
-                        Just x -> x
+  Just x -> x
+  Nothing -> error $ "Unknown identifier " ++ s
 
 lookup' :: Env -> String -> Maybe Exp
 lookup' [] _ = Nothing
@@ -120,3 +128,7 @@ addToAL [] s e = [[(s,e)]]
 addToAL [[]] s e = [[(s,e)]]
 addToAL (env:envs) s e = env':envs
   where env' = (s,e) : env
+
+bool2lisp :: Bool -> Exp
+bool2lisp True = ETrue
+bool2lisp False = EList []
