@@ -8,11 +8,17 @@ import Data.Maybe (fromJust)
 
 main :: IO ()
 main = do
-  s <- getContents
-  mi <- parseAndEval s
-  case mi of
-    Just v -> putStrLn $ show' v
-    Nothing -> putStrLn "Error parsing expressions" >> return ()
+  env <- defaultEnv
+  env' <- loadScript env "examples/interpreter.lisp"
+  repl env'
+
+-- main :: IO ()
+-- main = do
+--   s <- getContents
+--   mi <- parseAndEval s
+--   case mi of
+--     Just v -> putStrLn $ show' v
+--     Nothing -> putStrLn "Error parsing expressions" >> return ()
 
 loadScript :: Env -> FilePath -> IO Env
 loadScript env p = do
@@ -30,17 +36,10 @@ parseAndEval s = do
     Just pair -> return . Just . fst . evalExps env $ fst pair
     Nothing -> return Nothing
 
-parseAndEval' :: String -> IO (Maybe Exp)
-parseAndEval' s =
-  let pairMaybe = runP expsP s
-   in case pairMaybe of
-    Nothing -> do
-      putStrLn "Error parsing expression"
-      return Nothing
-    Just (e,_) -> do
-      print e
-      env <- defaultEnv
-      return . Just . fst $ evalExps env e
+parseAndEval' :: Env -> String -> Maybe (Exp, Env)
+parseAndEval' env s = do
+  (e,_) <- runP expsP s
+  return $ evalExps env e
 
 repl :: Env -> IO ()
 repl env = do

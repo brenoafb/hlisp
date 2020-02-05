@@ -1,7 +1,7 @@
 module Interpreter where
 
 import Control.Applicative
-import Debug.Trace (trace)
+import Debug.Trace
 
 data Exp = EInt Int
          | EList [Exp]
@@ -67,13 +67,12 @@ evalPrimitive env exp = case exp of
                              OpMinus -> EInt $ v1 - v2
                              OpMult -> EInt $ v1 * v2
                              OpDiv -> EInt $ v1 `div` v2
-                             OpLt -> bool2lisp $ v1 < v2
-                             OpGt -> bool2lisp $ v1 > v2
-                             OpLeq -> bool2lisp $ v1 <= v2
-                             OpGeq -> bool2lisp $ v1 >= v2
+                             OpLt -> bool2exp $ v1 < v2
+                             OpGt -> bool2exp $ v1 > v2
+                             OpLeq -> bool2exp $ v1 <= v2
+                             OpGeq -> bool2exp $ v1 >= v2
                     EList [EOp OpQuote, x] -> x
                     EList [EOp OpAtom, x] -> evalAtom env . fst $ eval env x
-                    -- EList [EOp OpEq, EList [EOp OpQuote, EVar x], EList [EOp OpQuote, EVar y]] -> evalEq env (EStr x) (EStr y)
                     EList [EOp OpEq, x, y] -> evalEq env (fst $ eval env x) (fst $ eval env y)
                     EList [EOp OpCar, x] -> evalCar env (fst $ eval env x)
                     EList [EOp OpCdr, x] -> evalCdr env (fst $ eval env x)
@@ -97,10 +96,11 @@ evalEq _ (EVar s1) (EVar s2) | s1 == s2 = ETrue
 evalEq _ (EList []) (EList []) = ETrue
 evalEq _ ETrue ETrue = ETrue
 evalEq _ (EOp op1) (EOp op2) | op1 == op2 = ETrue
-evalEq _ x y = trace (show x ++ " " ++ show y) $ EList []
+evalEq _ _ _ = EList []
 
 evalCar :: Env -> Exp -> Exp
 evalCar _ (EList (x:_)) = x
+evalCar _ e = trace ("evalCar: got " ++ show e) undefined
 
 evalCdr :: Env -> Exp -> Exp
 evalCdr _ (EList (_:xs)) = EList xs
@@ -135,6 +135,6 @@ addToAL [[]] s e = [[(s,e)]]
 addToAL (env:envs) s e = env':envs
   where env' = (s,e) : env
 
-bool2lisp :: Bool -> Exp
-bool2lisp True = ETrue
-bool2lisp False = EList []
+bool2exp :: Bool -> Exp
+bool2exp True = ETrue
+bool2exp False = EList []
