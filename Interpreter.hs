@@ -28,6 +28,12 @@ data Op = OpPlus
 type FrameEnv = [(String, Exp)]
 type Env = [FrameEnv]
 
+evalExps :: Env -> [Exp] -> (Exp, Env)
+evalExps env [] = (EList [], env)
+evalExps env [exp] = eval env exp
+evalExps env (exp:exps) = let (result,env') = eval env exp
+  in evalExps env' exps
+
 eval :: Env -> Exp -> (Exp, Env)
 eval env exp = case exp of
                  EList (EOp _:_) -> (evalPrimitive env exp, env)
