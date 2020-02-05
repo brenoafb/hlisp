@@ -39,9 +39,7 @@ expP :: Parser Exp
 expP = foldr1 (<|>)
      [ EInt <$> intP
      , lambdaP
---     , labelP
      , EOp . str2op <$> opP
-     , EStr <$> stringP
      , EVar <$> stringP'
      , ETrue <$ identP "#t"
      , EList <$> listP
@@ -70,9 +68,11 @@ str2op "car" = OpCar
 str2op "cdr" = OpCdr
 str2op "cons" = OpCons
 str2op "cond" = OpCond
+str2op "list" = OpList
 
 opP :: Parser String
-opP = foldr1 (<|>) . map identP $ ["+", "-", "*", "/", "<", ">", "<=", ">=", "quote", "atom", "eq", "car", "cdr", "cons", "cond"]
+opP = foldr1 (<|>) . map identP
+    $ ["+", "-", "*", "/", "<", ">", "<=", ">=", "quote", "atom", "eq", "car", "cdr", "cons", "cond", "list"]
 
 listP :: Parser [Exp]
 listP = op *> expP `sepBy` wP' <* cp
