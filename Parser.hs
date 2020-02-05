@@ -31,6 +31,10 @@ instance Monad Parser where
     let p' = f x
     runP p' s'  -- feels wrong
 
+expsP :: Parser [Exp]
+expsP = expP `sepBy` nl
+  where nl = some $ charP '\n'
+
 expP :: Parser Exp
 expP = foldr1 (<|>)
      [ EInt <$> intP
@@ -94,22 +98,36 @@ stringP :: Parser String
 stringP = charP '\"' *> stringP' <* charP '\"'
 
 stringP' :: Parser String
-stringP' = spanP' $ \c -> not (isDigit c) && (isSymbol c || isAlphaNum c)
+stringP' =   ((:) <$> firstCharP <*> spanP' p)
+         <|> ((: []) <$> firstCharP)
+  where p = \c -> isSymbol c
+               || isAlphaNum c
+               || c == '-'
+        firstCharP = predP isAlpha
 
 spanP :: (Char -> Bool) -> Parser String
-spanP pred = Parser $ \s -> pure $ span pred s
+spanP p = Parser $ \s -> pure $ span p s
 
 spanP' :: (Char -> Bool) -> Parser String
-spanP' pred = Parser $ \s -> let p@(x,xs) = span pred s
+spanP' p = Parser $ \s -> let pair@(x,xs) = span p s
                               in case x of
                                    [] -> Nothing
-                                   _ -> Just p
+                                   _ -> Just pair
 
 wP' :: Parser String
-wP' = some (charP ' ' <|> charP '\n' <|> charP '\t')
+wP' = some wP
 
 wP'' :: Parser String
-wP'' = many (charP ' ' <|> charP '\n' <|> charP '\t')
+wP'' = many wP
+
+wP :: Parser Char
+wP = charP ' ' <|> charP '\n' <|> charP '\t'
+
+predP :: (Char -> Bool) -> Parser Char
+predP p = Parser $ \s ->
+  case s of
+    (c:cs) | p c -> Just (c,cs)
+    _ -> Nothing
 
 charP :: Char -> Parser Char
 charP c = Parser $ \s ->
