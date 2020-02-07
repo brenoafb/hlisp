@@ -31,24 +31,20 @@ instance Monad Parser where
     let p' = f x
     runP p' s'  -- feels wrong
 
+expsP :: Parser [Exp]
+expsP = expP `sepBy` nl
+  where nl = some $ charP '\n'
+
 expP :: Parser Exp
 expP = foldr1 (<|>)
      [ EInt <$> intP
      , lambdaP
---     , labelP
      , EOp . str2op <$> opP
-     , EStr <$> stringP
-     , EVar <$> stringP'
+     , EAtom <$> stringP'
      , ETrue <$ identP "#t"
      , EList <$> listP
      , quoteP
      ]
-
--- labelP :: Parser Exp
--- labelP = ELabel <$>
---   (op *> identP "label" *> wP' *> stringP' <* wP') <*> (lambdaP <* cp)
---   where op = charP '(' <* wP''
---         cp = wP'' *> charP ')'
 
 lambdaP :: Parser Exp
 lambdaP = ELambda  <$>
@@ -61,16 +57,21 @@ str2op "+" = OpPlus
 str2op "-" = OpMinus
 str2op "*" = OpMult
 str2op "/" = OpDiv
-str2op "quote" = OpQuote
+str2op "<" = OpLt
+str2op ">" = OpGt
+str2op "<=" = OpLeq
+str2op ">=" = OpLeq
 str2op "atom" = OpAtom
 str2op "eq" = OpEq
 str2op "car" = OpCar
 str2op "cdr" = OpCdr
 str2op "cons" = OpCons
 str2op "cond" = OpCond
+str2op "list" = OpList
 
 opP :: Parser String
-opP = foldr1 (<|>) . map identP $ ["+", "-", "*", "/", "quote", "atom", "eq", "car", "cdr", "cons", "cond"]
+opP = foldr1 (<|>) . map identP
+    $ ["+", "-", "*", "/", "<", ">", "<=", ">=", "atom", "eq", "car", "cdr", "cons", "cond", "list"]
 
 listP :: Parser [Exp]
 listP = op *> expP `sepBy` wP' <* cp
@@ -82,7 +83,7 @@ p `sepBy` sep = ((:) <$> p <*> many (sep *> p))
               <|> pure []
 
 quoteP :: Parser Exp
-quoteP = (\e -> EList (EOp OpQuote : [e])) <$> (charP '\'' *> expP)
+quoteP = (\e -> EList (EAtom "quote" : [e])) <$> (charP '\'' *> expP)
 
 intP :: Parser Int
 intP = read <$> spanP' isDigit
@@ -94,22 +95,36 @@ stringP :: Parser String
 stringP = charP '\"' *> stringP' <* charP '\"'
 
 stringP' :: Parser String
-stringP' = spanP' $ \c -> not (isDigit c) && (isSymbol c || isAlphaNum c)
+stringP' =   ((:) <$> firstCharP <*> spanP' p)
+         <|> ((: []) <$> firstCharP)
+  where p = \c -> isSymbol c
+               || isAlphaNum c
+               || c == '-'
+        firstCharP = predP isAlpha
 
 spanP :: (Char -> Bool) -> Parser String
-spanP pred = Parser $ \s -> pure $ span pred s
+spanP p = Parser $ \s -> pure $ span p s
 
 spanP' :: (Char -> Bool) -> Parser String
-spanP' pred = Parser $ \s -> let p@(x,xs) = span pred s
+spanP' p = Parser $ \s -> let pair@(x,xs) = span p s
                               in case x of
                                    [] -> Nothing
-                                   _ -> Just p
+                                   _ -> Just pair
 
 wP' :: Parser String
-wP' = some (charP ' ' <|> charP '\n' <|> charP '\t')
+wP' = some wP
 
 wP'' :: Parser String
-wP'' = many (charP ' ' <|> charP '\n' <|> charP '\t')
+wP'' = many wP
+
+wP :: Parser Char
+wP = charP ' ' <|> charP '\n' <|> charP '\t'
+
+predP :: (Char -> Bool) -> Parser Char
+predP p = Parser $ \s ->
+  case s of
+    (c:cs) | p c -> Just (c,cs)
+    _ -> Nothing
 
 charP :: Char -> Parser Char
 charP c = Parser $ \s ->
