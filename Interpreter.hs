@@ -7,7 +7,7 @@ data Exp = EInt Int
          | EList [Exp]
          | EOp Op
          | ETrue
-         | EVar String
+         | EAtom String
          | ELambda [String] Exp -- ELambda params body
          deriving (Eq, Show)
 
@@ -19,7 +19,6 @@ data Op = OpPlus
         | OpGt
         | OpLeq
         | OpGeq
-        | OpQuote
         | OpAtom
         | OpEq
         | OpCar
@@ -41,16 +40,17 @@ evalExps env (exp:exps) = let (_,env') = eval env exp
 eval :: Env -> Exp -> (Exp, Env)
 eval env exp = case exp of
                  EList (EOp _:_) -> (evalPrimitive env exp, env)
-                 EVar s -> (unsafeLookup' env s, env)
-                 EList [EVar "define", EVar s, exp] ->
+                 EAtom s -> (unsafeLookup' env s, env)
+                 EList [EAtom "quote", v] -> (v, env)
+                 EList [EAtom "define", EAtom s, exp] ->
                    let v = fst $ eval env exp
                        env' = addToAL env s v
                        in (v, env')
-                 EList (EList [EVar "label", EVar s, lmbd]:exps) ->
+                 EList (EList [EAtom "label", EAtom s, lmbd]:exps) ->
                    let env' = addToAL env s lmbd
                     in eval env' $ EList (lmbd:exps)
-                 EList (EVar f : exps) -> eval env $ EList (f':exps)
-                   where (f', _) = eval env $ EVar f
+                 EList (EAtom f : exps) -> eval env $ EList (f':exps)
+                   where (f', _) = eval env $ EAtom f
                  EList (ELambda params body:exps) ->
                    let bindings = zip params (map (fst . eval env) exps)
                    in eval (bindings:env) body
@@ -71,7 +71,6 @@ evalPrimitive env exp = case exp of
                              OpGt -> bool2exp $ v1 > v2
                              OpLeq -> bool2exp $ v1 <= v2
                              OpGeq -> bool2exp $ v1 >= v2
-                    EList [EOp OpQuote, x] -> x
                     EList [EOp OpAtom, x] -> evalAtom env . fst $ eval env x
                     EList [EOp OpEq, x, y] -> evalEq env (fst $ eval env x) (fst $ eval env y)
                     EList [EOp OpCar, x] -> evalCar env (fst $ eval env x)
@@ -87,12 +86,12 @@ evalAtom _ x = case x of
   EList _ -> EList []
   EOp _ -> ETrue
   ETrue -> ETrue
-  EVar _ -> ETrue
+  EAtom _ -> ETrue
   ELambda _ _ -> EList []
 
 evalEq :: Env -> Exp -> Exp -> Exp
 evalEq _ (EInt x) (EInt y) | x == y = ETrue
-evalEq _ (EVar s1) (EVar s2) | s1 == s2 = ETrue
+evalEq _ (EAtom s1) (EAtom s2) | s1 == s2 = ETrue
 evalEq _ (EList []) (EList []) = ETrue
 evalEq _ ETrue ETrue = ETrue
 evalEq _ (EOp op1) (EOp op2) | op1 == op2 = ETrue

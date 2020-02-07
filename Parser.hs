@@ -40,7 +40,7 @@ expP = foldr1 (<|>)
      [ EInt <$> intP
      , lambdaP
      , EOp . str2op <$> opP
-     , EVar <$> stringP'
+     , EAtom <$> stringP'
      , ETrue <$ identP "#t"
      , EList <$> listP
      , quoteP
@@ -61,7 +61,6 @@ str2op "<" = OpLt
 str2op ">" = OpGt
 str2op "<=" = OpLeq
 str2op ">=" = OpLeq
-str2op "quote" = OpQuote
 str2op "atom" = OpAtom
 str2op "eq" = OpEq
 str2op "car" = OpCar
@@ -72,7 +71,7 @@ str2op "list" = OpList
 
 opP :: Parser String
 opP = foldr1 (<|>) . map identP
-    $ ["+", "-", "*", "/", "<", ">", "<=", ">=", "quote", "atom", "eq", "car", "cdr", "cons", "cond", "list"]
+    $ ["+", "-", "*", "/", "<", ">", "<=", ">=", "atom", "eq", "car", "cdr", "cons", "cond", "list"]
 
 listP :: Parser [Exp]
 listP = op *> expP `sepBy` wP' <* cp
@@ -84,7 +83,7 @@ p `sepBy` sep = ((:) <$> p <*> many (sep *> p))
               <|> pure []
 
 quoteP :: Parser Exp
-quoteP = (\e -> EList (EOp OpQuote : [e])) <$> (charP '\'' *> expP)
+quoteP = (\e -> EList (EAtom "quote" : [e])) <$> (charP '\'' *> expP)
 
 intP :: Parser Int
 intP = read <$> spanP' isDigit
