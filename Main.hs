@@ -53,5 +53,7 @@ repl env = do
       putStrLn $ showExp result
       repl env'
 
+-- defaultEnv consists of primitive operations along with a base library
+-- TODO: load primitive operations
 defaultEnv :: IO Env
 defaultEnv = loadScript [[]] "base.lisp"
