@@ -8,7 +8,6 @@ import Interpreter
 newtype Parser a = Parser { runP :: String -> Maybe (a, String) }
 
 instance Functor Parser where
-  -- fmap :: (a -> b) -> Parser a -> Parser b
   fmap f p = Parser $ \s -> do
     (x,s') <- runP p s
     return (f x, s')
@@ -25,11 +24,10 @@ instance Alternative Parser where
   pa <|> pb = Parser $ \s -> runP pa s <|> runP pb s
 
 instance Monad Parser where
-  -- (>>=) :: Parser a -> (a -> Parser b) -> Parser b
   p >>= f = Parser $ \s -> do
     (x, s') <- runP p s
     let p' = f x
-    runP p' s'  -- feels wrong
+    runP p' s'
 
 expsP :: Parser [Exp]
 expsP = expP `sepBy` nl
@@ -39,7 +37,7 @@ expP :: Parser Exp
 expP = foldr1 (<|>)
      [ EInt <$> intP
      , lambdaP
-     , EOp . str2op <$> opP
+     -- , EOp . str2op <$> opP
      , EAtom <$> stringP'
      , ETrue <$ identP "#t"
      , EList <$> listP
@@ -51,27 +49,6 @@ lambdaP = ELambda  <$>
   (op *> identP "lambda" *> wP' *> op *> stringP' `sepBy` wP' <* cp) <*> (wP' *> expP <* cp)
   where op = charP '(' <* wP''
         cp = wP'' *> charP ')'
-
-str2op :: String -> Op
-str2op "+" = OpPlus
-str2op "-" = OpMinus
-str2op "*" = OpMult
-str2op "/" = OpDiv
-str2op "<" = OpLt
-str2op ">" = OpGt
-str2op "<=" = OpLeq
-str2op ">=" = OpLeq
-str2op "atom" = OpAtom
-str2op "eq" = OpEq
-str2op "car" = OpCar
-str2op "cdr" = OpCdr
-str2op "cons" = OpCons
-str2op "cond" = OpCond
-str2op "list" = OpList
-
-opP :: Parser String
-opP = foldr1 (<|>) . map identP
-    $ ["+", "-", "*", "/", "<", ">", "<=", ">=", "atom", "eq", "car", "cdr", "cons", "cond", "list"]
 
 listP :: Parser [Exp]
 listP = op *> expP `sepBy` wP' <* cp
@@ -95,12 +72,11 @@ stringP :: Parser String
 stringP = charP '\"' *> stringP' <* charP '\"'
 
 stringP' :: Parser String
-stringP' =   ((:) <$> firstCharP <*> spanP' p)
-         <|> ((: []) <$> firstCharP)
-  where p = \c -> isSymbol c
-               || isAlphaNum c
-               || c == '-'
-        firstCharP = predP isAlpha
+stringP' = (:) <$> first <*> rest
+  where first = symbolP <|> letterP
+        rest = many (digitP <|> symbolP <|> letterP)
+        letterP = predP isLetter
+        digitP = predP isDigit
 
 spanP :: (Char -> Bool) -> Parser String
 spanP p = Parser $ \s -> pure $ span p s
@@ -131,3 +107,6 @@ charP c = Parser $ \s ->
   case s of
     (c':cs) | c' == c -> Just (c,cs)
     _ -> Nothing
+
+symbolP :: Parser Char
+symbolP = foldr1 (<|>) $ map charP "-+=*/<>=!?*|:@#_~"

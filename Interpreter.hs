@@ -5,31 +5,16 @@ import Debug.Trace
 
 data Exp = EInt Int
          | EList [Exp]
-         | EOp Op
          | ETrue
          | EAtom String
+         | EPrim String [String] ([Exp] -> Exp)
          | ELambda [String] Exp -- ELambda params body
-         deriving (Eq, Show)
-
-data Op = OpPlus
-        | OpMinus
-        | OpMult
-        | OpDiv
-        | OpLt
-        | OpGt
-        | OpLeq
-        | OpGeq
-        | OpAtom
-        | OpEq
-        | OpCar
-        | OpCdr
-        | OpCons
-        | OpCond
-        | OpList
-        deriving (Eq, Show)
 
 type FrameEnv = [(String, Exp)]
 type Env = [FrameEnv]
+
+showExp :: Exp -> String
+showExp = undefined
 
 evalExps :: Env -> [Exp] -> (Exp, Env)
 evalExps env [] = (EList [], env)
@@ -39,7 +24,6 @@ evalExps env (exp:exps) = let (_,env') = eval env exp
 
 eval :: Env -> Exp -> (Exp, Env)
 eval env exp = case exp of
-                 EList (EOp _:_) -> (evalPrimitive env exp, env)
                  EAtom s -> (unsafeLookup' env s, env)
                  EList [EAtom "quote", v] -> (v, env)
                  EList [EAtom "define", EAtom s, exp] ->
@@ -49,42 +33,50 @@ eval env exp = case exp of
                  EList (EList [EAtom "label", EAtom s, lmbd]:exps) ->
                    let env' = addToAL env s lmbd
                     in eval env' $ EList (lmbd:exps)
-                 EList (EAtom f : exps) -> eval env $ EList (f':exps)
-                   where (f', _) = eval env $ EAtom f
+                 -- EList (EAtom f : exps) -> eval env $ EList (f':exps)
+                 --   where (f', _) = eval env $ EAtom f
+                 EList (EAtom f : exps) -> (apply env' func, env)
+                   where func@(EPrim _ params _) = unsafeLookup' env f
+                         bindings = zip params (map (fst . eval env) exps)
+                         env' = bindings:env
                  EList (ELambda params body:exps) ->
                    let bindings = zip params (map (fst . eval env) exps)
                    in eval (bindings:env) body
                  _ -> (exp, env)
 
-evalPrimitive :: Env -> Exp -> Exp
-evalPrimitive env exp = case exp of
-                    EList [EOp op, e1, e2]
-                      | op `elem` [OpPlus, OpMinus, OpMult, OpDiv, OpLt, OpGt, OpLeq, OpGeq] -> -- arithmetic operation
-                          let EInt v1 = fst $ eval env e1
-                              EInt v2 = fst $ eval env e2
-                          in case op of
-                             OpPlus -> EInt $ v1 + v2
-                             OpMinus -> EInt $ v1 - v2
-                             OpMult -> EInt $ v1 * v2
-                             OpDiv -> EInt $ v1 `div` v2
-                             OpLt -> bool2exp $ v1 < v2
-                             OpGt -> bool2exp $ v1 > v2
-                             OpLeq -> bool2exp $ v1 <= v2
-                             OpGeq -> bool2exp $ v1 >= v2
-                    EList [EOp OpAtom, x] -> evalAtom env . fst $ eval env x
-                    EList [EOp OpEq, x, y] -> evalEq env (fst $ eval env x) (fst $ eval env y)
-                    EList [EOp OpCar, x] -> evalCar env (fst $ eval env x)
-                    EList [EOp OpCdr, x] -> evalCdr env (fst $ eval env x)
-                    EList [EOp OpCons, x, y] -> evalCons env (fst $ eval env x) (fst $ eval env y)
-                    EList (EOp OpCond:xs) -> evalCond env xs
-                    EList (EOp OpList:xs) -> evalList env xs
+
+apply :: Env -> Exp -> Exp
+apply env (EPrim name _ f) = undefined
+apply env (ELambda _ body) = undefined
+
+-- evalPrimitive :: Env -> Exp -> Exp
+-- evalPrimitive env exp = case exp of
+--                     EList [EOp op, e1, e2]
+--                       | op `elem` [OpPlus, OpMinus, OpMult, OpDiv, OpLt, OpGt, OpLeq, OpGeq] -> -- arithmetic operation
+--                           let EInt v1 = fst $ eval env e1
+--                               EInt v2 = fst $ eval env e2
+--                           in case op of
+--                              OpPlus -> EInt $ v1 + v2
+--                              OpMinus -> EInt $ v1 - v2
+--                              OpMult -> EInt $ v1 * v2
+--                              OpDiv -> EInt $ v1 `div` v2
+--                              OpLt -> bool2exp $ v1 < v2
+--                              OpGt -> bool2exp $ v1 > v2
+--                              OpLeq -> bool2exp $ v1 <= v2
+--                              OpGeq -> bool2exp $ v1 >= v2
+--                     EList [EOp OpAtom, x] -> evalAtom env . fst $ eval env x
+--                     EList [EOp OpEq, x, y] -> evalEq env (fst $ eval env x) (fst $ eval env y)
+--                     EList [EOp OpCar, x] -> evalCar env (fst $ eval env x)
+--                     EList [EOp OpCdr, x] -> evalCdr env (fst $ eval env x)
+--                     EList [EOp OpCons, x, y] -> evalCons env (fst $ eval env x) (fst $ eval env y)
+--                     EList (EOp OpCond:xs) -> evalCond env xs
+--                     EList (EOp OpList:xs) -> evalList env xs
 
 evalAtom :: Env -> Exp -> Exp
 evalAtom _ x = case x of
   EInt _ -> ETrue
   EList [] -> ETrue
   EList _ -> EList []
-  EOp _ -> ETrue
   ETrue -> ETrue
   EAtom _ -> ETrue
   ELambda _ _ -> EList []
@@ -94,12 +86,11 @@ evalEq _ (EInt x) (EInt y) | x == y = ETrue
 evalEq _ (EAtom s1) (EAtom s2) | s1 == s2 = ETrue
 evalEq _ (EList []) (EList []) = ETrue
 evalEq _ ETrue ETrue = ETrue
-evalEq _ (EOp op1) (EOp op2) | op1 == op2 = ETrue
 evalEq _ _ _ = EList []
 
 evalCar :: Env -> Exp -> Exp
 evalCar _ (EList (x:_)) = x
-evalCar _ e = trace ("evalCar: got " ++ show e) undefined
+evalCar _ e = undefined
 
 evalCdr :: Env -> Exp -> Exp
 evalCdr _ (EList (_:xs)) = EList xs

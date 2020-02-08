@@ -2,8 +2,6 @@ module Main where
 
 import Parser
 import Interpreter
-import Preprocessor
-import Serializer
 import Data.Maybe (fromJust)
 
 main :: IO ()
@@ -52,7 +50,7 @@ repl env = do
       repl env
     Just (exp,_) -> do
       let (result, env') = eval env exp
-      putStrLn $ show' result
+      putStrLn $ showExp result
       repl env'
 
 defaultEnv :: IO Env
