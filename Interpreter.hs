@@ -51,25 +51,28 @@ primitives = [EPrim "eq" eq
              ,EPrim "cdr" cdr
              ,EPrim "cons" cons
              ,EPrim "list" list
-             ,EPrim "+"   $ unpackInt (+)
-             ,EPrim "-"   $ unpackInt (-)
-             ,EPrim "*"   $ unpackInt (*)
-             ,EPrim "/"   $ unpackInt div
-             ,EPrim "mod" $ unpackInt mod
-             ,EPrim "="   $ unpackBool (==)
-             ,EPrim "<"   $ unpackBool (<)
-             ,EPrim ">"   $ unpackBool (>)
-             ,EPrim ">="  $ unpackBool (>=)
-             ,EPrim "<="  $ unpackBool (<=)
+             ,EPrim "+"   $ packInt (+)
+             ,EPrim "-"   $ packInt (-)
+             ,EPrim "*"   $ packInt (*)
+             ,EPrim "/"   $ packInt div
+             ,EPrim "mod" $ packInt mod
+             ,EPrim "="   $ packBool (==)
+             ,EPrim "<"   $ packBool (<)
+             ,EPrim ">"   $ packBool (>)
+             ,EPrim ">="  $ packBool (>=)
+             ,EPrim "<="  $ packBool (<=)
              ]
 
-unpackInt :: (Int -> Int -> Int) -> [Exp] -> Exp
-unpackInt op [EInt x, EInt y] = EInt (x `op` y)
-unpackInt _ _ = undefined -- error!
+prim2env :: [Exp] -> Env
+prim2env prims = [map (\p@(EPrim name _) -> (name, p)) prims]
 
-unpackBool :: (Int -> Int -> Bool) -> [Exp] -> Exp
-unpackBool op [EInt x, EInt y] = bool2exp $ x `op` y
-unpackBool _ _ = undefined -- error!
+packInt :: (Int -> Int -> Int) -> [Exp] -> Exp
+packInt op [EInt x, EInt y] = EInt (x `op` y)
+packInt _ _ = undefined -- error!
+
+packBool :: (Int -> Int -> Bool) -> [Exp] -> Exp
+packBool op [EInt x, EInt y] = bool2exp $ x `op` y
+packBool _ _ = undefined -- error!
 
 eq :: [Exp] -> Exp
 eq [EInt x, EInt y] | x == y = ETrue

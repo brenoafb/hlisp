@@ -1,5 +1,6 @@
 module Main where
 
+import Prelude hiding (exp)
 import Parser
 import Interpreter
 import Data.Maybe (fromJust)
@@ -56,4 +57,5 @@ repl env = do
 -- defaultEnv consists of primitive operations along with a base library
 -- TODO: load primitive operations
 defaultEnv :: IO Env
-defaultEnv = loadScript [[]] "base.lisp"
+defaultEnv = loadScript prims "base.lisp"
+  where prims = prim2env primitives
