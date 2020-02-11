@@ -2,6 +2,7 @@ module Interpreter where
 
 import Control.Applicative
 import Debug.Trace
+import Data.List
 
 data Exp = EInt Int
          | EList [Exp]
@@ -14,7 +15,14 @@ type FrameEnv = [(String, Exp)]
 type Env = [FrameEnv]
 
 showExp :: Exp -> String
-showExp = undefined
+showExp (EInt n) = show n
+showExp (EList xs) = "(" ++ (concat . intersperse " " . map showExp $ xs) ++ ")"
+showExp ETrue = "#t"
+showExp (EAtom s) = s
+showExp (EPrim s _) = "$primitive-" ++ s ++ "$"
+showExp (ELambda params body) = "(lambda (" ++ (concat $ intersperse " " params) ++ ") "
+                                ++ showExp body ++ ")"
+
 
 evalExps :: Env -> [Exp] -> (Exp, Env)
 evalExps env [] = (EList [], env)
