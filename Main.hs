@@ -4,12 +4,24 @@ import Prelude hiding (exp)
 import Parser
 import Interpreter
 import Data.Maybe (fromJust)
+import System.Environment
 
 main :: IO ()
 main = do
+  args <- getArgs
+  if null args
+  then runRepl
+  else let filename = args !! 0
+       in runFile filename
+
+runRepl :: IO ()
+runRepl = do
   env <- defaultEnv
   env' <- loadScript env "examples/interpreter.lisp"
   repl env'
+
+runFile :: String -> IO ()
+runFile filename = undefined
 
 -- main :: IO ()
 -- main = do
