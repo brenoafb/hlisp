@@ -8,3 +8,5 @@
 	      (cond ((eq a b) a)
 		    ((gt a b) (gcd (- a b) b))
 		    (#t (gcd (- b a) a)))))
+
+(gcd 43 12)

@@ -18,11 +18,15 @@ runRepl :: IO ()
 runRepl = do
   env <- defaultEnv
   env' <- loadScript env "examples/interpreter.lisp"
-  env'' <- loadScript env "base.lisp"
-  repl env''
+  repl env'
 
-runFile :: String -> IO ()
-runFile filename = undefined
+runFile :: FilePath -> IO ()
+runFile filename = do
+  s <- readFile filename
+  env <- defaultEnv
+  case runP expsP s of
+    Nothing -> putStrLn "error parsing script"
+    Just (exps,_) -> (print . fst $ evalExps env exps) >> return ()
 
 -- main :: IO ()
 -- main = do
@@ -68,7 +72,6 @@ repl env = do
       repl env'
 
 -- defaultEnv consists of primitive operations along with a base library
--- TODO: load primitive operations
 defaultEnv :: IO Env
 defaultEnv = loadScript prims "base.lisp"
   where prims = prim2env primitives
