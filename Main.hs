@@ -18,7 +18,8 @@ runRepl :: IO ()
 runRepl = do
   env <- defaultEnv
   env' <- loadScript env "examples/interpreter.lisp"
-  repl env'
+  env'' <- loadScript env "base.lisp"
+  repl env''
 
 runFile :: String -> IO ()
 runFile filename = undefined

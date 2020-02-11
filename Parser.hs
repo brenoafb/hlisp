@@ -38,8 +38,8 @@ expP = foldr1 (<|>)
      [ EInt <$> intP
      , lambdaP
      -- , EOp . str2op <$> opP
-     , EAtom <$> stringP'
      , ETrue <$ identP "#t"
+     , EAtom <$> stringP'
      , EList <$> listP
      , quoteP
      ]

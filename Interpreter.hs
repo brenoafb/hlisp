@@ -11,6 +11,9 @@ data Exp = EInt Int
          | EPrim String ([Exp] -> Exp)
          | ELambda [String] Exp -- ELambda params body
 
+instance Show Exp where
+  show = showExp
+
 type FrameEnv = [(String, Exp)]
 type Env = [FrameEnv]
 
@@ -87,7 +90,8 @@ eq [EInt x, EInt y] | x == y = ETrue
 eq [EAtom s1, EAtom s2] | s1 == s2 = ETrue
 eq [EList [], EList []] = ETrue
 eq [ETrue, ETrue] = ETrue
-eq _ = undefined -- error!
+eq [_, _] = EList []
+eq _ = undefined
 
 atom :: [Exp] -> Exp
 atom [EInt _] = ETrue
