@@ -114,7 +114,7 @@ cons [x, EList xs] = EList (x:xs)
 cons _ = undefined -- error!
 
 list :: [Exp] -> Exp
-list = EList -- TODO: is this it?
+list = EList
 
 evalCond :: Env -> [Exp] -> Exp
 evalCond env (EList [p,e]:es) =
