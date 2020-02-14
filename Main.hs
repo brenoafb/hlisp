@@ -1,16 +1,32 @@
 module Main where
 
+import Prelude hiding (exp)
 import Parser
 import Interpreter
-import Preprocessor
-import Serializer
 import Data.Maybe (fromJust)
+import System.Environment
 
 main :: IO ()
 main = do
+  args <- getArgs
+  if null args
+  then runRepl
+  else let filename = args !! 0
+       in runFile filename
+
+runRepl :: IO ()
+runRepl = do
   env <- defaultEnv
   env' <- loadScript env "examples/interpreter.lisp"
   repl env'
+
+runFile :: FilePath -> IO ()
+runFile filename = do
+  s <- readFile filename
+  env <- defaultEnv
+  case runP expsP s of
+    Nothing -> putStrLn "error parsing script"
+    Just (exps,_) -> (print . fst $ evalExps env exps) >> return ()
 
 -- main :: IO ()
 -- main = do
@@ -52,8 +68,10 @@ repl env = do
       repl env
     Just (exp,_) -> do
       let (result, env') = eval env exp
-      putStrLn $ show' result
+      putStrLn $ showExp result
       repl env'
 
+-- defaultEnv consists of primitive operations along with a base library
 defaultEnv :: IO Env
-defaultEnv = loadScript [[]] "base.lisp"
+defaultEnv = loadScript prims "base.lisp"
+  where prims = prim2env primitives
