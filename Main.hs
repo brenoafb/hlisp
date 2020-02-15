@@ -44,8 +44,7 @@ loadScript env path = do
   s <- readFile path
   case runP expsP s of
     Nothing -> return Nothing -- error parsing file
-    Just (exps,rem) | not $ null rem -> return Nothing -- couldnt parse entire file
-    Just (exps,[]) -> return $ getNewEnv env exps
+    Just (exps,_) -> return $ getNewEnv env exps
 
 -- updates env with changes introduced by evaluating a list of expressions
 getNewEnv :: Env -> [Exp] -> Maybe Env
