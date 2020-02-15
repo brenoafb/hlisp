@@ -6,14 +6,17 @@ import Interpreter
 import Data.Maybe (fromJust)
 import System.Environment
 
+-- TOOD: Run scripts
+-- main :: IO ()
+-- main = do
+--   args <- getArgs
+--   if null args
+--   then runRepl
+--   else let filename = args !! 0
+--        in runFile filename
+
 main :: IO ()
-main = do
-  args <- getArgs
-  if null args
-  then runRepl
-  else runRepl
---  else let filename = args !! 0
---       in runFile filename
+main = runRepl
 
 repl :: Env -> IO ()
 repl env = do
