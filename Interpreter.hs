@@ -8,7 +8,7 @@ data Exp = EInt Int
          | EList [Exp]
          | ETrue
          | EAtom String
-         | EPrim String ([Exp] -> Exp)
+         | EPrim String ([Exp] -> Maybe Exp)
          | ELambda [String] Exp -- ELambda params body
 
 instance Show Exp where
@@ -27,33 +27,40 @@ showExp (ELambda params body) = "(lambda (" ++ (concat $ intersperse " " params)
                                 ++ showExp body ++ ")"
 
 
-evalExps :: Env -> [Exp] -> (Exp, Env)
-evalExps env [] = (EList [], env)
+evalExps :: Env -> [Exp] -> Maybe (Exp, Env)
+evalExps env [] = return (EList [], env)
 evalExps env [exp] = eval env exp
-evalExps env (exp:exps) = let (_,env') = eval env exp
-  in evalExps env' exps
+evalExps env (exp:exps) = do
+  (_, env') <- eval env exp
+  evalExps env' exps
 
-eval :: Env -> Exp -> (Exp, Env)
+eval :: Env -> Exp -> Maybe (Exp, Env)
 eval env exp = case exp of
-                 EAtom s -> (unsafeLookup' env s, env)
-                 EList [EAtom "quote", v] -> (v, env)
-                 EList [EAtom "define", EAtom s, exp] ->
-                   let v = fst $ eval env exp
-                       env' = addToAL env s v
-                       in (v, env')
+                 EAtom s -> do
+                   x <- lookup' env s
+                   return (x, env)
+                 EList [EAtom "quote", v] -> return (v, env)
+                 EList [EAtom "define", EAtom s, exp] -> do
+                   (v, _) <- eval env exp
+                   let env' = addToAL env s v
+                   return (v, env')
                  EList (EList [EAtom "label", EAtom s, lmbd]:exps) ->
                    let env' = addToAL env s lmbd
                     in eval env' $ EList (lmbd:exps)
-                 EList (EAtom "cond" : exps) -> (evalCond env exps, env)
+                 EList (EAtom "cond" : exps) ->
+                   (\x -> (x,env)) <$> evalCond env exps
                  EList (EAtom f : exps) -> case lookup' env f of
                    Just lmbd@(ELambda _ _) -> eval env $ EList (lmbd:exps)
-                   Just prim@(EPrim _ f) -> (f params, env)
-                     where params = map (fst . eval env) exps
-                   _ -> undefined -- error - not a function
-                 EList (ELambda params body:exps) ->
-                   let bindings = zip params (map (fst . eval env) exps)
-                   in eval (bindings:env) body
-                 _ -> (exp, env)
+                   Just prim@(EPrim _ f) -> do
+                     p <- mapM (eval env) exps
+                     let p' = map fst p
+                     x <- f p'
+                     return (x, env)
+                 EList (ELambda params body:exps) -> do
+                   p <- mapM (eval env) exps
+                   let bindings = zip params (map fst p)
+                   eval (bindings:env) body
+                 _ -> return (exp, env)
 
 primitives :: [Exp]
 primitives = [EPrim "eq" eq
@@ -77,56 +84,52 @@ primitives = [EPrim "eq" eq
 prim2env :: [Exp] -> Env
 prim2env prims = [map (\p@(EPrim name _) -> (name, p)) prims]
 
-packInt :: (Int -> Int -> Int) -> [Exp] -> Exp
-packInt op [EInt x, EInt y] = EInt (x `op` y)
-packInt _ _ = undefined -- error!
+packInt :: (Int -> Int -> Int) -> [Exp] -> Maybe Exp
+packInt op [EInt x, EInt y] = return $ EInt (x `op` y)
+packInt _ _ = Nothing
 
-packBool :: (Int -> Int -> Bool) -> [Exp] -> Exp
-packBool op [EInt x, EInt y] = bool2exp $ x `op` y
-packBool _ _ = undefined -- error!
+packBool :: (Int -> Int -> Bool) -> [Exp] -> Maybe Exp
+packBool op [EInt x, EInt y] = return $ bool2exp $ x `op` y
+packBool _ _ = Nothing
 
-eq :: [Exp] -> Exp
-eq [EInt x, EInt y] | x == y = ETrue
-eq [EAtom s1, EAtom s2] | s1 == s2 = ETrue
-eq [EList [], EList []] = ETrue
-eq [ETrue, ETrue] = ETrue
-eq [_, _] = EList []
-eq _ = undefined
+eq :: [Exp] -> Maybe Exp
+eq [EInt x, EInt y] | x == y = return ETrue
+eq [EAtom s1, EAtom s2] | s1 == s2 = return ETrue
+eq [EList [], EList []] = return ETrue
+eq [ETrue, ETrue] = return ETrue
+eq [_, _] = return $ EList []
+eq _ = Nothing
 
-atom :: [Exp] -> Exp
-atom [EInt _] = ETrue
-atom [EList []] = ETrue
-atom [ETrue] = ETrue
-atom [EAtom _] = ETrue
-atom [_] = EList []
-atom _ = undefined -- error!
+atom :: [Exp] -> Maybe Exp
+atom [EInt _] = return ETrue
+atom [EList []] = return ETrue
+atom [ETrue] = return ETrue
+atom [EAtom _] = return ETrue
+atom [_] = return $ EList []
+atom _ = Nothing
 
-car :: [Exp] -> Exp
-car [EList (x:_)] = x
-car _ = undefined -- error!
+car :: [Exp] -> Maybe Exp
+car [EList (x:_)] = return x
+car _ = Nothing
 
-cdr :: [Exp] -> Exp
-cdr [EList (_:xs)] = EList xs
-cdr _ = undefined -- error!
+cdr :: [Exp] -> Maybe Exp
+cdr [EList (_:xs)] = return $ EList xs
+cdr _ = Nothing
 
-cons :: [Exp] -> Exp
-cons [x, EList xs] = EList (x:xs)
-cons _ = undefined -- error!
+cons :: [Exp] -> Maybe Exp
+cons [x, EList xs] = return $ EList (x:xs)
+cons _ = Nothing
 
-list :: [Exp] -> Exp
-list = EList
+list :: [Exp] -> Maybe Exp
+list = return . EList
 
-evalCond :: Env -> [Exp] -> Exp
-evalCond env (EList [p,e]:es) =
-  case fst $ eval env p of
-    ETrue -> fst $ eval env e
+evalCond :: Env -> [Exp] -> Maybe Exp
+evalCond env (EList [p,e]:es) = do
+  (v, _) <- eval env p
+  case v of
+    ETrue -> fst <$> (eval env e)
     EList [] -> evalCond env es
-evalCond _ _ = undefined -- error!
-
-unsafeLookup' :: Env -> String -> Exp
-unsafeLookup' env s = case lookup' env s of
-  Just x -> x
-  Nothing -> error $ "Unknown identifier " ++ s
+evalCond _ _ = Nothing -- error!
 
 lookup' :: Env -> String -> Maybe Exp
 lookup' [] _ = Nothing

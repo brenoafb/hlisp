@@ -6,72 +6,58 @@ import Interpreter
 import Data.Maybe (fromJust)
 import System.Environment
 
-main :: IO ()
-main = do
-  args <- getArgs
-  if null args
-  then runRepl
-  else let filename = args !! 0
-       in runFile filename
-
-runRepl :: IO ()
-runRepl = do
-  env <- defaultEnv
-  env' <- loadScript env "examples/interpreter.lisp"
-  repl env'
-
-runFile :: FilePath -> IO ()
-runFile filename = do
-  s <- readFile filename
-  env <- defaultEnv
-  case runP expsP s of
-    Nothing -> putStrLn "error parsing script"
-    Just (exps,_) -> (print . fst $ evalExps env exps) >> return ()
-
+-- TOOD: Run scripts
 -- main :: IO ()
 -- main = do
---   s <- getContents
---   mi <- parseAndEval s
---   case mi of
---     Just v -> putStrLn $ show' v
---     Nothing -> putStrLn "Error parsing expressions" >> return ()
+--   args <- getArgs
+--   if null args
+--   then runRepl
+--   else let filename = args !! 0
+--        in runFile filename
 
-loadScript :: Env -> FilePath -> IO Env
-loadScript env p = do
-  s <- readFile p
-  case runP expsP s of
-    Nothing ->
-      putStrLn "error parsing script" >>= (const $ return env)
-    Just (exps,_) -> return . snd $ evalExps env exps
-
-parseAndEval :: String -> IO (Maybe Exp)
-parseAndEval s = do
-  env <- defaultEnv
-  let pairMaybe = runP expsP s
-  case pairMaybe of
-    Just pair -> return . Just . fst . evalExps env $ fst pair
-    Nothing -> return Nothing
-
-parseAndEval' :: Env -> String -> Maybe (Exp, Env)
-parseAndEval' env s = do
-  (e,_) <- runP expsP s
-  return $ evalExps env e
+main :: IO ()
+main = runRepl
 
 repl :: Env -> IO ()
 repl env = do
   putStr "> "
   line <- getLine
-  let p = runP expP line
-  case p of
-    Nothing -> do
-      putStrLn "Error parsing line"
-      repl env
+  case runP expP line of
+    Nothing -> putStrLn "Error parsing line" >> repl env
     Just (exp,_) -> do
-      let (result, env') = eval env exp
-      putStrLn $ showExp result
-      repl env'
+      case eval env exp of
+        Nothing -> putStrLn "Error evaluating expression" >> repl env
+        Just (result, env') -> print result >> repl env'
 
 -- defaultEnv consists of primitive operations along with a base library
-defaultEnv :: IO Env
+defaultEnv :: IO (Maybe Env)
 defaultEnv = loadScript prims "base.lisp"
   where prims = prim2env primitives
+
+runScript :: Env -> FilePath -> IO (Maybe (Exp, Env))
+runScript env path = do
+  s <- readFile path
+  case runP expsP s of
+    Nothing -> return Nothing -- error parsing file
+    Just (exps,rem) | not $ null rem -> return Nothing -- couldnt parse entire file
+    Just (exps,[]) -> return $ evalExps env exps
+
+loadScript :: Env -> FilePath -> IO (Maybe Env)
+loadScript env path = do
+  s <- readFile path
+  case runP expsP s of
+    Nothing -> return Nothing -- error parsing file
+    Just (exps,_) -> return $ getNewEnv env exps
+
+-- updates env with changes introduced by evaluating a list of expressions
+getNewEnv :: Env -> [Exp] -> Maybe Env
+getNewEnv env exps = do
+  (_, env') <- evalExps env exps
+  return env'
+
+runRepl :: IO ()
+runRepl = do
+  envMaybe <- defaultEnv
+  case envMaybe of
+    Nothing -> putStrLn "Error loading default environment"
+    Just env -> repl env
