@@ -11,6 +11,21 @@ The error handling is very primitive, with just Maybes.
 I based the implementation off of Paul Grahams ["Roots of Lisp"](http://www.paulgraham.com/rootsoflisp.html)
 article.
 
+## Compiling
+The program can be compiled with `ghc Main` and run with `./Main`, which will start a REPL session.
+You can optionally provide a script argument containing definitions (view examples folder).
+
+```bash
+~ ghc Main
+./Main
+> (+ 5 2)
+7
+```
+
+```bash
+~ runhaskell Main.hs [script]
+```
+
 ## Examples
 
 
