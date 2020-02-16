@@ -6,17 +6,21 @@ import Interpreter
 import Data.Maybe (fromJust)
 import System.Environment
 
--- TOOD: Run scripts
--- main :: IO ()
--- main = do
---   args <- getArgs
---   if null args
---   then runRepl
---   else let filename = args !! 0
---        in runFile filename
-
 main :: IO ()
-main = runRepl
+main = do
+  args <- getArgs
+  envMaybe <- defaultEnv
+  case envMaybe of
+    Nothing -> putStrLn "Error: could not load default library."
+    Just env ->
+      if null args
+      then repl env
+      else do
+        let filename = head args
+        envMaybe' <- loadScript env filename
+        case envMaybe' of
+          Nothing -> putStrLn $ "Error: could not load script " ++ filename
+          Just env' -> repl env'
 
 repl :: Env -> IO ()
 repl env = do
@@ -24,7 +28,7 @@ repl env = do
   line <- getLine
   case runP expP line of
     Nothing -> putStrLn "Error parsing line" >> repl env
-    Just (exp,_) -> do
+    Just (exp,_) ->
       case eval env exp of
         Nothing -> putStrLn "Error evaluating expression" >> repl env
         Just (result, env') -> print result >> repl env'

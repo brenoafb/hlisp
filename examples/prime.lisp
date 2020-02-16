@@ -1,29 +1,12 @@
 (define prime
   (lambda (n)
-    (eq n (smallest-divisor n))))
+    (eq (smallest-divisor n) n)))
 
 (define smallest-divisor
   (lambda (n)
-    (find-divisor n 2)))
+    (smallest-divisor-helper n 2)))
 
-(define find-divisor
-  (lambda (n test-divisor)
-    (cond ((> (square test-divisor) n) n)
-	  ((divides test-divisor n) test-divisor)
-	  (#t (find-divisor n (+ test-divisor 1))))))
-
-(define divides
-  (lambda (a b)
-    (eq (remainder b a) 0)))
-
-(define even
-  (lambda (a)
-    (divides 2 a)))
-
-(define remainder
-  (lambda (a b)
-    (- a
-       (* b (/ a b)))))
-
-(define square
-  (lambda (a) (* a a)))
+(define smallest-divisor-helper
+  (lambda (m n)
+    (cond ((eq 0 (mod m n)) n)
+          (#t (smallest-divisor-helper m (+ n 1))))))

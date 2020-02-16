@@ -19,11 +19,11 @@ type Env = [FrameEnv]
 
 showExp :: Exp -> String
 showExp (EInt n) = show n
-showExp (EList xs) = "(" ++ (concat . intersperse " " . map showExp $ xs) ++ ")"
+showExp (EList xs) = "(" ++ (unwords . map showExp $ xs) ++ ")"
 showExp ETrue = "#t"
 showExp (EAtom s) = s
 showExp (EPrim s _) = "$primitive-" ++ s ++ "$"
-showExp (ELambda params body) = "(lambda (" ++ (concat $ intersperse " " params) ++ ") "
+showExp (ELambda params body) = "(lambda (" ++ unwords params ++ ") "
                                 ++ showExp body ++ ")"
 
 
@@ -127,7 +127,7 @@ evalCond :: Env -> [Exp] -> Maybe Exp
 evalCond env (EList [p,e]:es) = do
   (v, _) <- eval env p
   case v of
-    ETrue -> fst <$> (eval env e)
+    ETrue -> fst <$> eval env e
     EList [] -> evalCond env es
 evalCond _ _ = Nothing -- error!
 
