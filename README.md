@@ -1,10 +1,7 @@
 # HLisp
 
-This is an implementation of a simple Lisp in Haskell.
-
-The implementation does not use any external libraries.
-
-I wanted to keep the implementation as simple as possible, while enabling a small interpreter to run on it.
+This is an implementation of a simple Lisp in Haskell with no external libraries.
+It can also interpret itself.
 
 The error handling is very primitive, with just Maybes.
 
